@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G-Ars | Academia de Guitarra & Arte Musical</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        vinyl: {
+                            base: '#0B0B0D',
+                            surface: '#1F2933',
+                            brass: '#B08D57',
+                            cream: '#E6E1D8',
+                            steel: '#6B7280',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* iOS-style Splash Screen Animation */
+        #splash-screen {
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #splash-screen.hidden-splash {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        body {
+            transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .ios-card {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .ios-card:hover {
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body class="bg-[#F4F3EF] text-[#0B0B0D] dark:bg-[#0B0B0D] dark:text-[#E6E1D8] font-sans antialiased min-h-screen flex flex-col selection:bg-[#B08D57] selection:text-white">
+
+    <!-- 1. PANTALLA DE CARGA INICIAL (SPLASH SCREEN ESTILO IOS) -->
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F4F3EF] dark:bg-[#0B0B0D] px-4">
+        <div class="relative flex flex-col items-center space-y-6 text-center">
+            <!-- Logo Icon with iOS scale pulse -->
+            <div class="w-24 h-24 bg-gradient-to-tr from-[#0B0B0D] via-[#1F2933] to-[#B08D57] rounded-3xl shadow-2xl flex items-center justify-center text-[#B08D57] transform animate-pulse border border-[#B08D57]/30">
+                <i data-lucide="disc" class="w-12 h-12"></i>
+            </div>
+            <div class="space-y-2">
+                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#0B0B0D] to-[#B08D57] dark:from-white dark:to-[#B08D57] bg-clip-text text-transparent">G-Ars / G-Praise</h1>
+                <p class="text-sm font-semibold text-[#6B7280] tracking-wide">Preparando una experiencia musical...</p>
+            </div>
+            <!-- iOS Style Progress Bar -->
+            <div class="w-56 h-1.5 bg-[#E6E1D8] dark:bg-[#1F2933] rounded-full overflow-hidden shadow-inner">
+                <div id="loader-bar" class="h-full bg-gradient-to-r from-[#B08D57] to-[#1F2933] dark:to-[#B08D57] rounded-full w-0 transition-all duration-700 ease-out"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- REGISTRATION / AUTH MODAL (2 EMERGENCY CONTACTS + DETAILED FIELDS) -->
+    <div id="auth-modal" class="fixed inset-0 z-40 bg-[#0B0B0D]/70 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-[#F9F8F6] dark:bg-[#1F2933] w-full max-w-lg rounded-3xl shadow-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-300">
+            <div class="p-6 bg-gradient-to-r from-[#0B0B0D] to-[#1F2933] text-[#E6E1D8] flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-[#B08D57]/20 text-[#B08D57] flex items-center justify-center border border-[#B08D57]/30">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 id="auth-modal-title" class="font-bold text-lg text-white">Registro Profesional G-Ars</h3>
+                        <p class="text-xs text-[#E6E1D8]/70">Acceso exclusivo a pensum y publicaciones</p>
+                    </div>
+                </div>
+                <button onclick="closeAuthModal()" class="text-[#6B7280] hover:text-white p-2 rounded-xl transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1 sm:col-span-2">
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Nombre Completo</label>
+                        <div class="relative">
+                            <i data-lucide="user" class="absolute left-3.5 top-3.5 w-4 h-4 text-[#6B7280]"></i>
+                            <input type="text" id="auth-name" required placeholder="Ej. Mateo Benítez" class="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-white dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57] transition">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1 sm:col-span-2">
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Correo Electrónico</label>
+                        <div class="relative">
+                            <i data-lucide="mail" class="absolute left-3.5 top-3.5 w-4 h-4 text-[#6B7280]"></i>
+                            <input type="email" id="auth-email" required value="g.arsmusic.ec@gmail.com" class="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-white dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57] transition">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1 sm:col-span-2">
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Teléfono Principal de Contacto <span class="text-amber-600">*</span></label>
+                        <div class="relative">
+                            <i data-lucide="phone" class="absolute left-3.5 top-3.5 w-4 h-4 text-[#6B7280]"></i>
+                            <input type="tel" id="auth-phone" required placeholder="+593 99 493 9431" class="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-white dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57] transition">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1 sm:col-span-1">
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">En caso de emergencia llamar a (Familiar)</label>
+                        <div class="relative">
+                            <i data-lucide="user-alert" class="absolute left-3.5 top-3.5 w-4 h-4 text-[#6B7280]"></i>
+                            <input type="text" id="auth-emergency-name" required placeholder="Nombre de contacto" class="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-white dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57] transition">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1 sm:col-span-1">
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Teléfono de Emergencia</label>
+                        <div class="relative">
+                            <i data-lucide="phone-call" class="absolute left-3.5 top-3.5 w-4 h-4 text-[#6B7280]"></i>
+                            <input type="tel" id="auth-emergency-phone" required placeholder="+593 99..." class="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-white dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57] transition">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-[#B08D57] to-[#1F2933] hover:opacity-95 text-white font-bold rounded-xl shadow-lg transition text-sm flex items-center justify-center space-x-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span>Registrarse y Desbloquear Pensum</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. BARRA DE NAVEGACIÓN SUPERIOR (MODO CLARO POR DEFECTO + VINILO NOIR PALETTE) -->
+    <header class="sticky top-0 z-30 bg-[#F4F3EF]/90 dark:bg-[#0B0B0D]/90 backdrop-blur-md border-b border-[#E6E1D8] dark:border-[#1F2933] transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <a href="#" onclick="switchView('home')" class="flex items-center space-x-3 group">
+                <div class="w-11 h-11 bg-gradient-to-tr from-[#0B0B0D] to-[#1F2933] rounded-2xl flex items-center justify-center text-[#B08D57] shadow-lg group-hover:scale-105 transition border border-[#B08D57]/30">
+                    <i data-lucide="disc" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-[#0B0B0D] to-[#B08D57] dark:from-white dark:to-[#B08D57] bg-clip-text text-transparent">G-Ars</span>
+                    <span class="block text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider">Academia de Musica</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center space-x-1">
+                <button onclick="switchView('home')" id="nav-home" class="px-4 py-2 rounded-xl text-sm font-semibold text-[#B08D57] bg-[#B08D57]/10 transition">Inicio</button>
+                <button onclick="switchView('courses')" id="nav-courses" class="px-4 py-2 rounded-xl text-sm font-semibold text-[#6B7280] hover:text-[#0B0B0D] dark:hover:text-white transition">Cursos</button>
+                <button onclick="switchView('pensum')" id="nav-pensum" class="px-4 py-2 rounded-xl text-sm font-semibold text-[#6B7280] hover:text-[#0B0B0D] dark:hover:text-white transition flex items-center space-x-1.5">
+                    <span>Pensum</span>
+                    <span id="pensum-badge" class="px-2 py-0.5 text-[10px] bg-[#B08D57]/20 text-[#B08D57] rounded-md font-bold flex items-center space-x-1 border border-[#B08D57]/30">
+                        <i data-lucide="lock" class="w-3 h-3"></i>
+                        <span>Bloqueado</span>
+                    </span>
+                </button>
+                <button onclick="switchView('reviews')" id="nav-reviews" class="px-4 py-2 rounded-xl text-sm font-semibold text-[#6B7280] hover:text-[#0B0B0D] dark:hover:text-white transition">Reseñas</button>
+                <button onclick="switchView('contact')" id="nav-contact" class="px-4 py-2 rounded-xl text-sm font-semibold text-[#6B7280] hover:text-[#0B0B0D] dark:hover:text-white transition">Contacto</button>
+            </nav>
+
+            <!-- Actions Right (Theme Toggle & Auth Button) -->
+            <div class="flex items-center space-x-3">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl border border-[#E6E1D8] dark:border-[#1F2933] text-[#6B7280] dark:text-[#B08D57] hover:bg-[#E6E1D8]/50 dark:hover:bg-[#1F2933] transition shadow-sm" aria-label="Cambiar tema">
+                    <i data-lucide="sun" id="theme-icon-sun" class="w-5 h-5 hidden dark:block transition-transform duration-300"></i>
+                    <i data-lucide="moon" id="theme-icon-moon" class="w-5 h-5 block dark:hidden transition-transform duration-300"></i>
+                </button>
+
+                <!-- Auth Action Button -->
+                <div id="auth-action-container">
+                    <button onclick="openAuthModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#B08D57] to-[#1F2933] hover:opacity-95 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center space-x-2">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        <span>Registrarse</span>
+                    </button>
+                </div>
+
+                <!-- Mobile menu button -->
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2.5 rounded-xl border border-[#E6E1D8] dark:border-[#1F2933]">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Drawer -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-[#E6E1D8] dark:border-[#1F2933] bg-[#F4F3EF] dark:bg-[#0B0B0D] px-4 py-4 space-y-2">
+            <button onclick="switchView('home'); toggleMobileMenu()" class="block w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E6E1D8]/40 dark:hover:bg-[#1F2933]">Inicio</button>
+            <button onclick="switchView('courses'); toggleMobileMenu()" class="block w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E6E1D8]/40 dark:hover:bg-[#1F2933]">Cursos</button>
+            <button onclick="switchView('pensum'); toggleMobileMenu()" class="block w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E6E1D8]/40 dark:hover:bg-[#1F2933] flex items-center justify-between">
+                <span>Pensum Académico</span>
+                <span class="text-xs bg-[#B08D57]/20 text-[#B08D57] px-2 py-0.5 rounded font-bold">Protegido</span>
+            </button>
+            <button onclick="switchView('reviews'); toggleMobileMenu()" class="block w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E6E1D8]/40 dark:hover:bg-[#1F2933]">Reseñas</button>
+            <button onclick="switchView('contact'); toggleMobileMenu()" class="block w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E6E1D8]/40 dark:hover:bg-[#1F2933]">Contacto</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow">
+
+        <!-- VIEW 1: HOME PAGE -->
+        <div id="view-home" class="space-y-20 pb-20">
+            <!-- Hero Section -->
+            <section class="relative overflow-hidden pt-16 pb-24 lg:pt-28 lg:pb-36 bg-gradient-to-b from-[#E6E1D8]/30 via-transparent to-transparent dark:from-[#0B0B0D]">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                        <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+                            <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-[#B08D57]/10 text-[#B08D57] border border-[#B08D57]/30 text-xs font-bold uppercase tracking-wider">
+                                <i data-lucide="award" class="w-3.5 h-3.5"></i>
+                                <span>Trayectoria desde 2019 en Ambato, Ecuador</span>
+                            </div>
+                            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+                                Domina el Arte Musical <span class="bg-gradient-to-r from-[#0B0B0D] to-[#B08D57] dark:from-white dark:to-[#B08D57] bg-clip-text text-transparent">con Excelencia y Arte</span>
+                            </h1>
+                            <p class="text-lg text-[#6B7280] dark:text-[#E6E1D8]/80 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                                Formación integral, Metodología probada, teoría avanzada y un pensum diseñado para llevarte al nivel profesional. G-Ars, desde 2019, uniendo la técnica clásica con la pasión contemporánea.
+                            </p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
+                                <button onclick="switchView('courses')" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#0B0B0D] to-[#1F2933] dark:from-[#1F2933] dark:to-[#B08D57] hover:opacity-95 text-white font-bold rounded-2xl shadow-xl transition ios-card flex items-center justify-center space-x-2">
+                                    <span>Explorar Cursos</span>
+                                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                                </button>
+                                <button onclick="openAuthModal()" class="w-full sm:w-auto px-8 py-4 bg-white dark:bg-[#1F2933] hover:bg-[#E6E1D8]/50 border border-[#E6E1D8] dark:border-[#6B7280]/30 font-bold rounded-2xl transition ios-card flex items-center justify-center space-x-2 text-[#B08D57]">
+                                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                    <span>Registrarse al Sistema</span>
+                                </button>
+                            </div>
+
+                            <!-- Trust indicators -->
+                            <div class="pt-6 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm font-semibold text-[#6B7280]">
+                                <div class="flex items-center space-x-2">
+                                    <i data-lucide="check-circle-2" class="w-5 h-5 text-[#B08D57]"></i>
+                                    <span>Ambato - Ecuador</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i data-lucide="mail" class="w-5 h-5 text-[#B08D57]"></i>
+                                    <span>g.arsmusic.ec@gmail.com</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i data-lucide="phone" class="w-5 h-5 text-[#B08D57]"></i>
+                                    <span>+593 99 493 9431</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hero Feature Card -->
+                        <div class="lg:col-span-5 relative">
+                            <div class="relative w-full max-w-md mx-auto aspect-square bg-gradient-to-tr from-[#1F2933]/10 to-[#B08D57]/20 rounded-3xl p-4 flex items-center justify-center border border-[#B08D57]/20 shadow-2xl">
+                                <div class="absolute inset-4 bg-white dark:bg-[#1F2933] rounded-2xl p-6 flex flex-col justify-between shadow-inner border border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-[#B08D57]/20 rounded-xl flex items-center justify-center text-[#B08D57] font-bold text-lg">🎵</div>
+                                            <div>
+                                                <h4 class="font-bold text-sm">G-Ars Masterclass</h4>
+                                                <p class="text-xs text-[#6B7280]">Est. 2019 • Ambato</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2.5 py-1 bg-[#B08D57]/20 text-[#B08D57] text-xs font-bold rounded-lg border border-[#B08D57]/30">Vinilo Noir</span>
+                                    </div>
+                                    <div class="space-y-3 py-4">
+                                        <div class="h-2.5 bg-[#E6E1D8] dark:bg-[#0B0B0D] rounded-full overflow-hidden">
+                                            <div class="w-full h-full bg-gradient-to-r from-[#B08D57] to-[#1F2933] rounded-full"></div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-[#6B7280] font-medium">
+                                            <span>Excelencia Musical Garantizada</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-4 bg-[#F4F3EF] dark:bg-[#0B0B0D] rounded-xl flex items-center justify-between border border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 rounded-full bg-[#1F2933] text-[#B08D57] flex items-center justify-center font-bold text-xs">⭐</div>
+                                            <div class="text-xs">
+                                                <p class="font-bold">4.9 / 5.0 Rating</p>
+                                                <p class="text-[#6B7280]">Opiniones verificadas</p>
+                                            </div>
+                                        </div>
+                                        <button onclick="switchView('reviews')" class="px-3 py-1.5 bg-[#B08D57] text-white font-bold text-xs rounded-lg hover:opacity-90 transition">Ver Reseñas</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features Grid (Metodología, Experiencia y Compromiso) -->
+            <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center space-y-3 max-w-2xl mx-auto mb-16">
+                    <span class="px-3 py-1 bg-[#B08D57]/10 text-[#B08D57] rounded-full text-xs font-bold uppercase tracking-wider border border-[#B08D57]/30">Filosofía G-Ars</span>
+                    <h2 class="text-3xl font-extrabold tracking-tight">Metodología, Experiencia y Compromiso</h2>
+                    <p class="text-[#6B7280] dark:text-[#E6E1D8]/70">Diseñado con estándares internacionales para garantizar un progreso sólido y constante. Formando músicos integrales desde 2019 bajo un estándar de máxima exigencia artística.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-[#B08D57]/10 text-[#B08D57] flex items-center justify-center border border-[#B08D57]/20">
+                            <i data-lucide="award" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="font-bold text-lg">Trayectoria desde 2019</h3>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Años de experiencia consolidando músicos profesionales y apasionados en Ambato y todo el Ecuador.</p>
+                    </div>
+                    <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-[#B08D57]/10 text-[#B08D57] flex items-center justify-center border border-[#B08D57]/20">
+                            <i data-lucide="lock" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="font-bold text-lg">Pensum Protegido</h3>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Ruta de estudios estructurada por módulos que solo los estudiantes registrados pueden consultar.</p>
+                    </div>
+                    <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-[#B08D57]/10 text-[#B08D57] flex items-center justify-center border border-[#B08D57]/20">
+                            <i data-lucide="shield-check" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="font-bold text-lg">Seguridad Estudiantil</h3>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Registro profesional con protocolos de contacto de emergencia para máxima tranquilidad familiar.</p>
+                    </div>
+                    <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-[#B08D57]/10 text-[#B08D57] flex items-center justify-center border border-[#B08D57]/20">
+                            <i data-lucide="music" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="font-bold text-lg">Práctica con Backing Tracks</h3>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Desarrolla tu oído musical y destreza en improvisación con pistas de acompañamiento profesionales.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- VIEW 2: COURSES CATALOG -->
+        <div id="view-courses" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+            <div class="text-center space-y-3 max-w-2xl mx-auto">
+                <span class="px-3 py-1 bg-[#B08D57]/10 text-[#B08D57] rounded-full text-xs font-bold uppercase tracking-wider border border-[#B08D57]/30">Programas G-Ars</span>
+                <h2 class="text-3xl font-extrabold tracking-tight">Cursos Disponibles en G-Ars</h2>
+                <p class="text-[#6B7280] dark:text-[#E6E1D8]/70">Elige tu nivel actual y comienza tu formación musical hoy.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Course 1 -->
+                <div class="bg-white dark:bg-[#1F2933] rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm ios-card flex flex-col justify-between">
+                    <div>
+                        <div class="h-48 bg-gradient-to-tr from-[#0B0B0D] to-[#1F2933] p-6 flex flex-col justify-between text-white relative">
+                            <span class="self-start px-3 py-1 bg-[#B08D57]/25 text-[#B08D57] border border-[#B08D57]/40 rounded-full text-xs font-bold">Nivel 1</span>
+                            <h3 class="text-xl font-bold">Guitarra Principiante desde Cero</h3>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Postura, afinación con armónicos, primeros acordes abiertos y lectura de tablaturas.</p>
+                            <div class="flex items-center space-x-4 text-xs text-[#6B7280]">
+                                <span class="flex items-center space-x-1"><i data-lucide="clock" class="w-4 h-4 text-[#B08D57]"></i><span>8 Semanas</span></span>
+                                <span class="flex items-center space-x-1"><i data-lucide="video" class="w-4 h-4 text-[#B08D57]"></i><span>24 Lecciones</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <button onclick="switchView('pensum')" class="w-full py-3 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-[#0B0B0D] dark:text-[#B08D57] font-bold rounded-xl hover:bg-[#B08D57] hover:text-white transition text-sm">
+                            Ver en el Pensum
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Course 2 -->
+                <div class="bg-white dark:bg-[#1F2933] rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm ios-card flex flex-col justify-between">
+                    <div>
+                        <div class="h-48 bg-gradient-to-tr from-[#1F2933] to-[#B08D57] p-6 flex flex-col justify-between text-white relative">
+                            <span class="self-start px-3 py-1 bg-white/20 text-white border border-white/30 rounded-full text-xs font-bold">Nivel 2</span>
+                            <h3 class="text-xl font-bold">Acordes con Cejilla & Ritmo</h3>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Dominio de cejillas, ritmos sincopados y transiciones fluidas en compases complejos.</p>
+                            <div class="flex items-center space-x-4 text-xs text-[#6B7280]">
+                                <span class="flex items-center space-x-1"><i data-lucide="clock" class="w-4 h-4 text-[#B08D57]"></i><span>10 Semanas</span></span>
+                                <span class="flex items-center space-x-1"><i data-lucide="video" class="w-4 h-4 text-[#B08D57]"></i><span>30 Lecciones</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <button onclick="switchView('pensum')" class="w-full py-3 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-[#0B0B0D] dark:text-[#B08D57] font-bold rounded-xl hover:bg-[#B08D57] hover:text-white transition text-sm">
+                            Ver en el Pensum
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Course 3 -->
+                <div class="bg-white dark:bg-[#1F2933] rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm ios-card flex flex-col justify-between">
+                    <div>
+                        <div class="h-48 bg-gradient-to-tr from-[#0B0B0D] to-[#B08D57] p-6 flex flex-col justify-between text-white relative">
+                            <span class="self-start px-3 py-1 bg-white/20 text-white border border-white/30 rounded-full text-xs font-bold">Nivel 3</span>
+                            <h3 class="text-xl font-bold">Improvisación & Escalas Master</h3>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80 leading-relaxed">Pentatónicas, modos griegos, backing tracks y solos avanzados en guitarra eléctrica.</p>
+                            <div class="flex items-center space-x-4 text-xs text-[#6B7280]">
+                                <span class="flex items-center space-x-1"><i data-lucide="clock" class="w-4 h-4 text-[#B08D57]"></i><span>12 Semanas</span></span>
+                                <span class="flex items-center space-x-1"><i data-lucide="video" class="w-4 h-4 text-[#B08D57]"></i><span>36 Lecciones</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <button onclick="switchView('pensum')" class="w-full py-3 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-[#0B0B0D] dark:text-[#B08D57] font-bold rounded-xl hover:bg-[#B08D57] hover:text-white transition text-sm">
+                            Ver en el Pensum
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: PENSUM ACADÉMICO (PROTEGIDO - MÓDULOS 1 A 6) -->
+        <div id="view-pensum" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+            <div class="text-center space-y-3 max-w-2xl mx-auto">
+                <span class="px-3 py-1 bg-[#B08D57]/10 text-[#B08D57] rounded-full text-xs font-bold uppercase tracking-wider border border-[#B08D57]/30">Área Exclusiva</span>
+                <h2 class="text-3xl font-extrabold tracking-tight">Pensum Académico G-Ars</h2>
+                <p class="text-[#6B7280] dark:text-[#E6E1D8]/70">Plan de estudios oficial de la academia de guitarra en Ambato.</p>
+            </div>
+
+            <!-- LOCKED STATE (Shown when guest) -->
+            <div id="pensum-locked-state" class="bg-white dark:bg-[#1F2933] rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 p-12 text-center space-y-6 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-[#B08D57]/10 rounded-full blur-2xl"></div>
+                <div class="w-20 h-20 bg-[#B08D57]/20 text-[#B08D57] rounded-2xl mx-auto flex items-center justify-center shadow-lg border border-[#B08D57]/40">
+                    <i data-lucide="lock" class="w-10 h-10"></i>
+                </div>
+                <div class="space-y-3 max-w-lg mx-auto">
+                    <h3 class="text-2xl font-bold">🔒 Contenido exclusivo para alumnos registrados</h3>
+                    <p class="text-[#6B7280] dark:text-[#E6E1D8]/80 text-sm leading-relaxed">Inicia sesión o regístrate en nuestra plataforma para desbloquear el plan de estudios completo, módulos detallados y recursos descargables de G-Ars.</p>
+                </div>
+                <div class="pt-2">
+                    <button onclick="openAuthModal()" class="px-8 py-4 bg-gradient-to-r from-[#B08D57] to-[#1F2933] hover:opacity-95 text-white font-bold rounded-2xl shadow-lg transition text-sm inline-flex items-center space-x-2">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        <span>Registrarse Ahora para Desbloquear</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- UNLOCKED STATE (Shown when registered) -->
+            <div id="pensum-unlocked-state" class="hidden space-y-6">
+                <div class="bg-[#B08D57]/10 border border-[#B08D57]/30 p-5 rounded-2xl flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-[#B08D57]"></i>
+                        <div>
+                            <p class="font-bold text-sm text-[#0B0B0D] dark:text-white">¡Acceso Académico Concedido!</p>
+                            <p class="text-xs text-[#6B7280] dark:text-[#E6E1D8]/70">Visualizando los 6 Módulos Oficiales de G-Ars.</p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-[#B08D57] bg-[#B08D57]/20 px-3 py-1 rounded-lg border border-[#B08D57]/30">Verificado</span>
+                </div>
+
+                <!-- Modules Accordion (1 to 6) -->
+                <div class="space-y-4">
+                    <!-- Module 1 -->
+                    <div class="bg-white dark:bg-[#1F2933] rounded-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('mod-1')" class="w-full p-6 text-left flex items-center justify-between hover:bg-[#E6E1D8]/30 dark:hover:bg-[#0B0B0D]/50 transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center font-bold text-sm border border-[#B08D57]/30">01</div>
+                                <div>
+                                    <h4 class="font-bold text-base">Módulo 1: Fundamentos y Anatomía de la Guitarra</h4>
+                                    <p class="text-xs text-[#6B7280]">Afinación digital, postura ergonómica y digitación inicial</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" id="icon-mod-1" class="w-5 h-5 text-[#6B7280] transition-transform"></i>
+                        </button>
+                        <div id="content-mod-1" class="hidden px-6 pb-6 pt-2 border-t border-[#E6E1D8] dark:border-[#6B7280]/20 space-y-3 text-sm text-[#6B7280] dark:text-[#E6E1D8]">
+                            <div class="flex items-center justify-between py-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 1: Conociendo el instrumento y tipos de cuerdas</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">15 min</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 2: Afinación exacta y ejercicios de independencia</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">25 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module 2 -->
+                    <div class="bg-white dark:bg-[#1F2933] rounded-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('mod-2')" class="w-full p-6 text-left flex items-center justify-between hover:bg-[#E6E1D8]/30 dark:hover:bg-[#0B0B0D]/50 transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center font-bold text-sm border border-[#B08D57]/30">02</div>
+                                <div>
+                                    <h4 class="font-bold text-base">Módulo 2: Armonía Elemental y Acordes Abiertos</h4>
+                                    <p class="text-xs text-[#6B7280]">Tríadas mayores, menores y patrones de rasgueo 4/4</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" id="icon-mod-2" class="w-5 h-5 text-[#6B7280] transition-transform"></i>
+                        </button>
+                        <div id="content-mod-2" class="hidden px-6 pb-6 pt-2 border-t border-[#E6E1D8] dark:border-[#6B7280]/20 space-y-3 text-sm text-[#6B7280] dark:text-[#E6E1D8]">
+                            <div class="flex items-center justify-between py-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 1: Círculos armónicos fundamentales (C, G, D, Am)</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">30 min</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 2: Sincronización rítmica con metrónomo</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">30 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module 3 -->
+                    <div class="bg-white dark:bg-[#1F2933] rounded-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('mod-3')" class="w-full p-6 text-left flex items-center justify-between hover:bg-[#E6E1D8]/30 dark:hover:bg-[#0B0B0D]/50 transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center font-bold text-sm border border-[#B08D57]/30">03</div>
+                                <div>
+                                    <h4 class="font-bold text-base">Módulo 3: Técnica de Cejilla y Ritmos Avanzados</h4>
+                                    <p class="text-xs text-[#6B7280]">Dominio de acordes con cejilla y síncopas</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" id="icon-mod-3" class="w-5 h-5 text-[#6B7280] transition-transform"></i>
+                        </button>
+                        <div id="content-mod-3" class="hidden px-6 pb-6 pt-2 border-t border-[#E6E1D8] dark:border-[#6B7280]/20 space-y-3 text-sm text-[#6B7280] dark:text-[#E6E1D8]">
+                            <div class="flex items-center justify-between py-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 1: Fuerza y posición en acordes con cejilla (F, Bm)</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">35 min</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 2: Ritmos latinoamericanos y baladas</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">40 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module 4 -->
+                    <div class="bg-white dark:bg-[#1F2933] rounded-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('mod-4')" class="w-full p-6 text-left flex items-center justify-between hover:bg-[#E6E1D8]/30 dark:hover:bg-[#0B0B0D]/50 transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center font-bold text-sm border border-[#B08D57]/30">04</div>
+                                <div>
+                                    <h4 class="font-bold text-base">Módulo 4: Escalas Pentatónicas e Introducción a Solos</h4>
+                                    <p class="text-xs text-[#6B7280]">Posiciones de la pentatónica y bends básicos</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" id="icon-mod-4" class="w-5 h-5 text-[#6B7280] transition-transform"></i>
+                        </button>
+                        <div id="content-mod-4" class="hidden px-6 pb-6 pt-2 border-t border-[#E6E1D8] dark:border-[#6B7280]/20 space-y-3 text-sm text-[#6B7280] dark:text-[#E6E1D8]">
+                            <div class="flex items-center justify-between py-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 1: Las 5 cajas de la escala pentatónica menor</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">40 min</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 2: Técnicas de ligados y vibrato</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">30 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module 5 -->
+                    <div class="bg-white dark:bg-[#1F2933] rounded-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('mod-5')" class="w-full p-6 text-left flex items-center justify-between hover:bg-[#E6E1D8]/30 dark:hover:bg-[#0B0B0D]/50 transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center font-bold text-sm border border-[#B08D57]/30">05</div>
+                                <div>
+                                    <h4 class="font-bold text-base">Módulo 5: Armonía Aplicada y G-Praise (Repertorio)</h4>
+                                    <p class="text-xs text-[#6B7280]">Inversiones de acordes y acompañamiento congregacional/moderno</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" id="icon-mod-5" class="w-5 h-5 text-[#6B7280] transition-transform"></i>
+                        </button>
+                        <div id="content-mod-5" class="hidden px-6 pb-6 pt-2 border-t border-[#E6E1D8] dark:border-[#6B7280]/20 space-y-3 text-sm text-[#6B7280] dark:text-[#E6E1D8]">
+                            <div class="flex items-center justify-between py-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 1: Acordes con séptima (maj7, m7, 7)</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">45 min</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 2: Dinámicas de guitarra acústica y eléctrica en ensambles</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">50 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module 6 -->
+                    <div class="bg-white dark:bg-[#1F2933] rounded-2xl border border-[#E6E1D8] dark:border-[#6B7280]/20 overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('mod-6')" class="w-full p-6 text-left flex items-center justify-between hover:bg-[#E6E1D8]/30 dark:hover:bg-[#0B0B0D]/50 transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center font-bold text-sm border border-[#B08D57]/30">06</div>
+                                <div>
+                                    <h4 class="font-bold text-base">Módulo 6: Improvisación Avanzada y Certificación G-Ars</h4>
+                                    <p class="text-xs text-[#6B7280]">Modos griegos, backing tracks y proyecto final de graduación</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" id="icon-mod-6" class="w-5 h-5 text-[#6B7280] transition-transform"></i>
+                        </button>
+                        <div id="content-mod-6" class="hidden px-6 pb-6 pt-2 border-t border-[#E6E1D8] dark:border-[#6B7280]/20 space-y-3 text-sm text-[#6B7280] dark:text-[#E6E1D8]">
+                            <div class="flex items-center justify-between py-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                                <span class="flex items-center space-x-2"><i data-lucide="play-circle" class="w-4 h-4 text-[#B08D57]"></i><span>Lección 1: Modos Lidio y Mixolidio sobre pistas de alta fidelidad</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">60 min</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <span class="flex items-center space-x-2"><i data-lucide="award" class="w-4 h-4 text-[#B08D57]"></i><span>Proyecto Final: Interpretación en vivo y evaluación de titulación</span></span>
+                                <span class="text-xs text-[#6B7280] font-semibold">Certificado</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 4: RESEÑAS CON CALIFICACIÓN (12 RESEÑAS TOTALES) -->
+        <div id="view-reviews" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+            <div class="text-center space-y-3 max-w-2xl mx-auto">
+                <span class="px-3 py-1 bg-[#B08D57]/10 text-[#B08D57] rounded-full text-xs font-bold uppercase tracking-wider border border-[#B08D57]/30">Testimonios Reales</span>
+                <h2 class="text-3xl font-extrabold tracking-tight">Lo que dicen nuestros estudiantes</h2>
+                <p class="text-[#6B7280] dark:text-[#E6E1D8]/70">Experiencias reales de músicos formados en G-Ars.</p>
+            </div>
+
+            <!-- Review Submission Box (Locked for visitors, unlocked for registered users) -->
+            <div id="review-form-container" class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm max-w-2xl mx-auto">
+                <div id="review-visitor-prompt" class="text-center space-y-4">
+                    <div class="w-12 h-12 bg-[#B08D57]/20 text-[#B08D57] rounded-2xl mx-auto flex items-center justify-center border border-[#B08D57]/30">
+                        <i data-lucide="lock" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="font-bold text-lg">¿Quieres dejar tu opinión?</h3>
+                    <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/80">Para mantener la autenticidad de nuestra comunidad, <strong>solo los usuarios registrados</strong> pueden publicar reseñas con calificación de estrellas.</p>
+                    <button onclick="openAuthModal()" class="px-6 py-3 bg-gradient-to-r from-[#B08D57] to-[#1F2933] text-white font-bold rounded-xl text-sm shadow-md transition">
+                        Registrarse para Dejar Reseña
+                    </button>
+                </div>
+
+                <form id="review-active-form" onsubmit="handleReviewSubmit(event)" class="hidden space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <span class="font-bold text-sm">Publicar Opinión como Alumno G-Ars</span>
+                        <span id="review-user-tag" class="text-xs bg-[#B08D57]/20 text-[#B08D57] px-2.5 py-1 rounded-lg font-bold">Verificado</span>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Calificación con Estrellas</label>
+                        <select id="review-stars" class="w-full mt-1 px-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57]">
+                            <option value="5">⭐⭐⭐⭐⭐ (5.0 - Excelente)</option>
+                            <option value="4">⭐⭐⭐⭐ (4.0 - Muy bueno)</option>
+                            <option value="3">⭐⭐⭐ (3.0 - Bueno)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Tu Testimonio</label>
+                        <textarea id="review-text" rows="3" required placeholder="Escribe tu experiencia en G-Ars..." class="w-full mt-1 px-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57]"></textarea>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-[#B08D57] to-[#1F2933] text-white font-bold rounded-xl shadow-md text-sm transition">
+                        Publicar Reseña Verificada
+                    </button>
+                </form>
+            </div>
+
+            <!-- Reviews Grid (12 Reviews) -->
+            <div id="reviews-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Review 1 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Empecé sin saber afinar la guitarra y hoy en día puedo interpretar mis canciones favoritas con total fluidez. La metodología de G-Ars en Ambato es excelente."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">DM</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Daniela Morales</h4>
+                            <p class="text-xs text-[#6B7280]">Estudiante de Guitarra Acústica</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 2 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"El módulo de improvisación y escalas pentatónicas abrió mi mente por completo. Los backing tracks y la teoría aplicada son de primer nivel."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">AP</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Alejandro Paredes</h4>
+                            <p class="text-xs text-[#6B7280]">Guitarrista Eléctrico</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 3 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Una academia muy seria, profesional y organizada. El proceso de registro y el pensum protegido le dan un toque sumamente formal y seguro."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">ST</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Sofía Torres</h4>
+                            <p class="text-xs text-[#6B7280]">Estudiante Avanzada</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 4 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"El enfoque en G-Praise y repertorio congregacional moderno me ha ayudado muchísimo en mi grupo musical de la iglesia. 100% recomendado."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">MB</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Mateo Benítez</h4>
+                            <p class="text-xs text-[#6B7280]">Músico de Adoración</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 5 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"La paciencia y el nivel pedagógico de los instructores son fantásticos. Mi hijo de 10 años espera con ansias su clase cada semana."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">CR</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Carmen Ruiz</h4>
+                            <p class="text-xs text-[#6B7280]">Madre de Alumno G-Ars Junior</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 6 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Desde 2019 se nota que esta academia cuida cada detalle. Las evaluaciones continuas te mantienen motivado y avanzando sin pausa."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">JR</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Javier Ruales</h4>
+                            <p class="text-xs text-[#6B7280]">Alumno Titulado</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 7 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"El pensum modular y el sistema de registro de emergencia demuestran un nivel institucional impecable en Ambato."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">LN</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Lucía Narváez</h4>
+                            <p class="text-xs text-[#6B7280]">Estudiante Verificada</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 8 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Me fascinó la técnica de cejilla explicada paso a paso. En pocas semanas superé el bloqueo que tenía desde hace años."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">PR</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Pablo Romero</h4>
+                            <p class="text-xs text-[#6B7280]">Aficionado a la Guitarra</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 9 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"La atención y el soporte por correo y teléfono son rápidos y muy cordiales. Se nota la pasión por la enseñanza musical."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">AV</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Andrea Viteri</h4>
+                            <p class="text-xs text-[#6B7280]">Estudiante de Acústica</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 10 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Un espacio donde la disciplina se une con la inspiración artística. ¡Recomiendo G-Ars a todos los músicos del Ecuador!"</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">FE</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Fernando Espinosa</h4>
+                            <p class="text-xs text-[#6B7280]">Músico Profesional</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 11 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Poder desbloquear el pensum y ver los 6 módulos detallados tras el registro da una gran sensación de avance estructurado."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">GM</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Gabriel Mendoza</h4>
+                            <p class="text-xs text-[#6B7280]">Estudiante Registrado</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review 12 -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-1 text-[#B08D57]">
+                            <i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i><i data-lucide="star" class="w-4 h-4 fill-current"></i>
+                        </div>
+                        <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"Excelente calidad en cada lección. El acompañamiento con pistas y teoría avanzada supera con creces cualquier curso tradicional."</p>
+                    </div>
+                    <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                        <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">VR</div>
+                        <div>
+                            <h4 class="font-bold text-sm">Valeria Ríos</h4>
+                            <p class="text-xs text-[#6B7280]">Guitarrista y Compositora</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 5: CONTACTO PROFESIONAL -->
+        <div id="view-contact" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+            <div class="text-center space-y-3 max-w-2xl mx-auto">
+                <span class="px-3 py-1 bg-[#B08D57]/10 text-[#B08D57] rounded-full text-xs font-bold uppercase tracking-wider border border-[#B08D57]/30">Atención Directa</span>
+                <h2 class="text-3xl font-extrabold tracking-tight">Comunícate con G-Ars</h2>
+                <p class="text-[#6B7280] dark:text-[#E6E1D8]/70">Estamos listos para resolver tus dudas y recibirte en la academia.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Contact Info Card -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm space-y-6">
+                    <h3 class="text-xl font-bold">Información de Contacto Oficial</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center shrink-0 border border-[#B08D57]/30">
+                                <i data-lucide="mail" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Correo Electrónico</p>
+                                <a href="mailto:g.arsmusic.ec@gmail.com" class="text-sm font-bold text-[#B08D57] hover:underline">g.arsmusic.ec@gmail.com</a>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center shrink-0 border border-[#B08D57]/30">
+                                <i data-lucide="phone" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Teléfono Profesional</p>
+                                <a href="tel:+593994939431" class="text-sm font-bold hover:underline">+593 99 493 9431</a>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="w-10 h-10 rounded-xl bg-[#B08D57]/15 text-[#B08D57] flex items-center justify-center shrink-0 border border-[#B08D57]/30">
+                                <i data-lucide="map-pin" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicación</p>
+                                <p class="text-sm font-bold">Ambato, Ecuador</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Message Form -->
+                <div class="bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm space-y-6">
+                    <h3 class="text-xl font-bold">Envíanos un Mensaje</h3>
+                    <form onsubmit="handleContactSubmit(event)" class="space-y-4">
+                        <div>
+                            <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Tu Nombre</label>
+                            <input type="text" id="contact-name" required placeholder="Nombre completo" class="w-full mt-1 px-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57]">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Mensaje</label>
+                            <textarea id="contact-message" rows="3" required placeholder="¿En qué podemos ayudarte?" class="w-full mt-1 px-4 py-3 rounded-xl border border-[#E6E1D8] dark:border-[#6B7280]/40 bg-[#F4F3EF] dark:bg-[#0B0B0D] text-sm focus:outline-none focus:ring-2 focus:ring-[#B08D57]"></textarea>
+                        </div>
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-[#B08D57] to-[#1F2933] hover:opacity-95 text-white font-bold rounded-xl shadow-md transition text-sm">
+                            Enviar Mensaje
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- BOTÓN FLOTANTE DE WHATSAPP DIRECTO -->
+    <a href="https://wa.me/593994939431?text=Hola%20G-Ars%2C%20me%20gustar%C3%ADa%20recibir%20informaci%C3%B3n%20sobre%20los%20cursos%20de%20guitarra." target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="fixed bottom-6 left-6 z-40 group flex items-center space-x-3 bg-[#1F2933] hover:bg-[#0B0B0D] text-white px-4 py-3.5 rounded-full shadow-2xl border border-[#B08D57]/50 transition-all duration-300 hover:scale-105">
+        <span class="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-md">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg>
+        </span>
+        <div class="hidden sm:block text-left pr-1">
+            <span class="block text-[10px] uppercase tracking-wider text-[#B08D57] font-bold">Atención Inmediata</span>
+            <span class="block text-xs font-semibold text-white">WhatsApp G-Ars</span>
+        </div>
+    </a>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#F4F3EF] dark:bg-[#0B0B0D] border-t border-[#E6E1D8] dark:border-[#1F2933] py-12 mt-20 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-tr from-[#0B0B0D] to-[#1F2933] rounded-xl flex items-center justify-center text-[#B08D57] border border-[#B08D57]/30">
+                    <i data-lucide="disc" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-sm">G-Ars | Academia de Guitarra & Arte Musical</span>
+            </div>
+            <p class="text-xs text-[#6B7280]">© 2026 G-Ars (Ambato, Ecuador). Todos los derechos reservados. g.arsmusic.ec@gmail.com</p>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- 0. CONFIGURACIÓN DE SUPABASE (REEMPLAZA CON TUS CLAVES DE PROYECTO) ---
+        const SUPABASE_URL = https://xeppplybegzivzictmyz.supabase.co/rest/v1/;
+        const SUPABASE_ANON_KEY = sb_publishable_M9-KtoQKMcsDaNJYJdUVcA_CwNgTY0j;
+        let supabaseClient = null;
+        if (window.supabase && SUPABASE_URL !== https://xeppplybegzivzictmyz.supabase.co/rest/v1/) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        // --- 1. STATE & INITIALIZATION ---
+        let currentUser = null; // null or { name, email, phone, emergencyName, emergencyPhone }
+        let currentView = 'home';
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Splash screen loader animation (iOS style, 1.5s total)
+            let progress = 0;
+            const loaderBar = document.getElementById('loader-bar');
+            const splashScreen = document.getElementById('splash-screen');
+
+            const interval = setInterval(() => {
+                progress += 20;
+                if (loaderBar) loaderBar.style.width = progress + '%';
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        if (splashScreen) splashScreen.classList.add('hidden-splash');
+                    }, 400);
+                }
+            }, 250);
+
+            // Init Lucide Icons
+            lucide.createIcons();
+
+            // Load saved user session if exists
+            const savedUser = localStorage.getItem('gars_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateAuthUI();
+            }
+
+            // Cargar reseñas guardadas desde Supabase si está conectado
+            if (supabaseClient) {
+                await loadSupabaseReviews();
+            }
+        });
+
+        async function loadSupabaseReviews() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('resenas')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                if (!error && data && data.length > 0) {
+                    const grid = document.getElementById('reviews-grid');
+                    data.reverse().forEach(item => {
+                        renderReviewCard(grid, item.nombre, item.estrellas, item.comentario);
+                    });
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.warn('Cargando reseñas locales:', err);
+            }
+        }
+
+        // --- 2. THEME TOGGLE (LIGHT MODE DEFAULT) ---
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                showToast("Modo Claro activado", "info");
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                showToast("Modo Oscuro (Vinilo Noir) activado", "info");
+            }
+        }
+
+        // --- 3. VIEW ROUTER (FIXED ROBUST SWITCHING) ---
+        function switchView(viewId) {
+            currentView = viewId;
+            const views = ['home', 'courses', 'pensum', 'reviews', 'contact'];
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const navBtn = document.getElementById(`nav-${v}`);
+                if (el) {
+                    if (v === viewId) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                }
+                if (navBtn) {
+                    if (v === viewId) {
+                        navBtn.classList.add('text-[#B08D57]', 'bg-[#B08D57]/10');
+                        navBtn.classList.remove('text-[#6B7280]');
+                    } else {
+                        navBtn.classList.remove('text-[#B08D57]', 'bg-[#B08D57]/10');
+                        navBtn.classList.add('text-[#6B7280]');
+                    }
+                }
+            });
+
+            if (viewId === 'pensum') {
+                checkPensumAccess();
+            }
+            if (viewId === 'reviews') {
+                updateReviewAccessUI();
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            lucide.createIcons();
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        // --- 4. REGISTRATION MODAL & AUTH ---
+        function openAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('auth-name').value;
+            const email = document.getElementById('auth-email').value;
+            const phone = document.getElementById('auth-phone').value;
+            const emergencyName = document.getElementById('auth-emergency-name').value;
+            const emergencyPhone = document.getElementById('auth-emergency-phone').value;
+
+            currentUser = { name, email, phone, emergencyName, emergencyPhone };
+            localStorage.setItem('gars_user', JSON.stringify(currentUser));
+
+            // Guardar ficha completa del alumno en Supabase
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('estudiantes').insert([{
+                        nombre_completo: name,
+                        correo: email,
+                        telefono_principal: phone,
+                        contacto_emergencia_nombre: emergencyName,
+                        contacto_emergencia_telefono: emergencyPhone
+                    }]);
+                } catch (err) {
+                    console.error('Error guardando alumno en Supabase:', err);
+                }
+            }
+
+            closeAuthModal();
+            updateAuthUI();
+            showToast(`¡Bienvenido a G-Ars, ${name}! Registro completado y guardado.`, "success");
+
+            if (currentView === 'pensum') {
+                checkPensumAccess();
+            }
+            if (currentView === 'reviews') {
+                updateReviewAccessUI();
+            }
+        }
+
+        function logoutUser() {
+            currentUser = null;
+            localStorage.removeItem('gars_user');
+            updateAuthUI();
+            showToast("Sesión cerrada correctamente", "info");
+            if (currentView === 'pensum') {
+                checkPensumAccess();
+            }
+            if (currentView === 'reviews') {
+                updateReviewAccessUI();
+            }
+        }
+
+        function updateAuthUI() {
+            const container = document.getElementById('auth-action-container');
+            const pensumBadge = document.getElementById('pensum-badge');
+
+            if (currentUser) {
+                if (container) {
+                    container.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <div class="hidden sm:block text-right">
+                                <p class="text-xs font-bold">${currentUser.name}</p>
+                                <p class="text-[10px] text-[#6B7280]">Alumno Registrado</p>
+                            </div>
+                            <button onclick="logoutUser()" class="px-4 py-2 bg-[#E6E1D8]/50 dark:bg-[#1F2933] hover:bg-red-50 hover:text-red-600 text-xs font-bold rounded-xl transition flex items-center space-x-1.5" title="Cerrar Sesión">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                <span class="hidden sm:inline">Salir</span>
+                            </button>
+                        </div>
+                    `;
+                }
+                if (pensumBadge) {
+                    pensumBadge.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i><span>Desbloqueado</span>`;
+                    pensumBadge.className = "px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-md font-bold flex items-center space-x-1 border border-emerald-300";
+                }
+            } else {
+                if (container) {
+                    container.innerHTML = `
+                        <button onclick="openAuthModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#B08D57] to-[#1F2933] hover:opacity-95 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center space-x-2">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                            <span>Registrarse</span>
+                        </button>
+                    `;
+                }
+                if (pensumBadge) {
+                    pensumBadge.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i><span>Bloqueado</span>`;
+                    pensumBadge.className = "px-2 py-0.5 text-[10px] bg-[#B08D57]/20 text-[#B08D57] rounded-md font-bold flex items-center space-x-1 border border-[#B08D57]/30";
+                }
+            }
+            checkPensumAccess();
+            updateReviewAccessUI();
+            lucide.createIcons();
+        }
+
+        // --- 5. PENSUM ACCESS CONTROL & ACCORDION ---
+        function checkPensumAccess() {
+            const lockedState = document.getElementById('pensum-locked-state');
+            const unlockedState = document.getElementById('pensum-unlocked-state');
+
+            if (!lockedState || !unlockedState) return;
+
+            if (currentUser) {
+                lockedState.classList.add('hidden');
+                unlockedState.classList.remove('hidden');
+            } else {
+                lockedState.classList.remove('hidden');
+                unlockedState.classList.add('hidden');
+            }
+        }
+
+        function toggleAccordion(modId) {
+            const content = document.getElementById(`content-${modId}`);
+            const icon = document.getElementById(`icon-${modId}`);
+            if (content) content.classList.toggle('hidden');
+            if (icon) icon.classList.toggle('rotate-180');
+        }
+
+        // --- 6. REVIEWS ACCESS CONTROL & SUBMISSION ---
+        function updateReviewAccessUI() {
+            const visitorPrompt = document.getElementById('review-visitor-prompt');
+            const activeForm = document.getElementById('review-active-form');
+
+            if (!visitorPrompt || !activeForm) return;
+
+            if (currentUser) {
+                visitorPrompt.classList.add('hidden');
+                activeForm.classList.remove('hidden');
+                const userTag = document.getElementById('review-user-tag');
+                if (userTag) userTag.innerText = currentUser.name;
+            } else {
+                visitorPrompt.classList.remove('hidden');
+                activeForm.classList.add('hidden');
+            }
+        }
+
+        function renderReviewCard(grid, authorName, stars, text) {
+            const newCard = document.createElement('div');
+            newCard.className = "bg-white dark:bg-[#1F2933] p-8 rounded-3xl border border-[#E6E1D8] dark:border-[#6B7280]/20 shadow-sm ios-card space-y-4 flex flex-col justify-between animate-in fade-in duration-300";
+            
+            let starsHtml = '';
+            for (let i = 0; i < parseInt(stars); i++) {
+                starsHtml += `<i data-lucide="star" class="w-4 h-4 fill-current"></i>`;
+            }
+
+            const initials = authorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+            newCard.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-1 text-[#B08D57]">
+                        ${starsHtml}
+                    </div>
+                    <p class="text-sm text-[#6B7280] dark:text-[#E6E1D8]/90 italic leading-relaxed">"${text}"</p>
+                </div>
+                <div class="flex items-center space-x-3 pt-4 border-t border-[#E6E1D8] dark:border-[#6B7280]/20">
+                    <div class="w-10 h-10 rounded-full bg-[#0B0B0D] text-[#B08D57] font-bold flex items-center justify-center text-sm">${initials}</div>
+                    <div>
+                        <h4 class="font-bold text-sm">${authorName}</h4>
+                        <p class="text-xs text-[#6B7280]">Alumno Registrado (Verificado)</p>
+                    </div>
+                </div>
+            `;
+
+            grid.insertBefore(newCard, grid.firstChild);
+        }
+
+        async function handleReviewSubmit(e) {
+            e.preventDefault();
+            const stars = document.getElementById('review-stars').value;
+            const text = document.getElementById('review-text').value;
+
+            const grid = document.getElementById('reviews-grid');
+            if (!grid) return;
+
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('resenas').insert([{
+                        nombre: currentUser.name,
+                        estrellas: parseInt(stars),
+                        comentario: text
+                    }]);
+                } catch (err) {
+                    console.error('Error guardando reseña en Supabase:', err);
+                }
+            }
+
+            renderReviewCard(grid, currentUser.name, stars, text);
+            showToast("¡Tu reseña verificada ha sido publicada!", "success");
+            e.target.reset();
+            lucide.createIcons();
+        }
+
+        // --- 7. CONTACT FORM SUBMIT ---
+        async function handleContactSubmit(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('contact-name');
+            const msgInput = document.getElementById('contact-message');
+
+            if (supabaseClient && nameInput && msgInput) {
+                try {
+                    await supabaseClient.from('mensajes_contacto').insert([{
+                        nombre: nameInput.value,
+                        mensaje: msgInput.value
+                    }]);
+                } catch (err) {
+                    console.error('Error guardando mensaje en Supabase:', err);
+                }
+            }
+
+            showToast("Mensaje enviado con éxito. Te responderemos al correo g.arsmusic.ec@gmail.com o al +593 99 493 9431.", "success");
+            e.target.reset();
+        }
+
+        // --- 8. TOAST NOTIFICATIONS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-[#0B0B0D] text-[#E6E1D8] border border-[#B08D57]/40 shadow-xl";
+            if (type === 'success') bgClass = "bg-[#1F2933] text-white border border-[#B08D57] shadow-xl";
+
+            toast.className = `${bgClass} px-5 py-3.5 rounded-2xl shadow-2xl text-sm font-semibold transform transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto flex items-center space-x-3`;
+            toast.innerHTML = `
+                <i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-5 h-5 text-[#B08D57] shrink-0"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+    </script>
+</body>
+</html>
